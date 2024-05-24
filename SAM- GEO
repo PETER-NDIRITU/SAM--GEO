@@ -1,0 +1,61 @@
+#lets install the necessary libraries
+!pip install segment-geospatial
+
+#lets import the necessary libraries
+import os
+import leafmap
+!pip install segment-geospatial
+from samgeo import SamGeo, tms_to_geotiff, get_basemaps
+
+
+m = leafmap.Map(center=[-1, 37], zoom=8)
+m.add_basemap("SATELLITE")
+
+if m.user_roi_bounds() is not None:
+    bbox = m.user_roi_bounds()
+else:
+    bbox = [0, 37, -2, 38]
+
+m
+
+image = "satellite.tif"
+tms_to_geotiff(output=image, bbox=bbox, zoom=7, source="SATELLITE", overwrite=True)
+m.layers[-1].visible = False  # we turn off the basemap
+m.add_raster(image, layer_name="image")
+m
+
+# #lets introduce SAM Class
+sam = SamGeo(
+    model_type="vit_h",
+    checkpoint="sam_vit_h_4b8939.pth",
+    sam_kwargs=None,
+)
+
+#lets not segment the image
+mask = "segment.tif"
+sam.generate(
+    image, mask, batch=True, foreground=True, erosion_kernel=(3,3), mask_multiplier=255
+)
+
+
+
+#Polygonze the raster
+vecor = "segment.gpkg",
+sam.tiff_to_gpkg(mask, vector, simplify_tolerance=None)
+
+
+#lets save to .shp
+shapefile = "segment.shp"
+sam.tiff_to_vector(mask, shapefile)
+
+
+# lets visualize the results
+style = {
+    "color": "#3388ff",
+    "weight" : 2,
+    "fillColor" : "#7c4185",
+    "fillOpacity" : 0.5,
+}
+
+m.add_vector(vector, layer_name="Vector". style=style)
+m
